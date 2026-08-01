@@ -1,0 +1,316 @@
+---
+output: github_document
+---
+
+# cityOpenData <img src="man/figures/cityOpenData_hex.png" alt="cityOpenData logo" width="72" align="right" />
+
+[![CRAN status](https://www.r-pkg.org/badges/version/cityOpenData)](https://CRAN.R-project.org/package=cityOpenData)
+[![CRAN downloads](https://cranlogs.r-pkg.org/badges/grand-total/cityOpenData?color=blue)](https://r-pkg.org/pkg/cityOpenData)
+[![Lifecycle: stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html)
+[![Project Status: Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![R-CMD-check](https://github.com/YOUR_GITHUB_USERNAME/cityOpenData/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/cityOpenData/actions/workflows/R-CMD-check.yaml)
+
+`cityOpenData` provides a lightweight R interface to the
+[CITY_NAME Open Data Portal](https://SOCRATA_DOMAIN/).
+
+The package allows users to search, filter, and download datasets from the
+CITY_NAME Open Data Portal directly into R without manually constructing API
+queries, handling JSON responses, or performing type conversion.
+
+Designed for students, educators, researchers, journalists, civic
+technologists, and analysts, `cityOpenData` reduces the technical overhead
+required to begin working with municipal Open Data while preserving access to
+the underlying Socrata infrastructure.
+
+---
+
+## How `cityOpenData` Works
+
+The package provides a streamlined interface to the CITY_NAME Open Data
+Portal's Socrata API.
+
+Internally, `cityOpenData`:
+
+- retrieves metadata from the live CITY_NAME Open Data catalog
+- constructs parameterized HTTP requests
+- downloads JSON responses from Socrata endpoints
+- converts results into tidy tibble outputs
+- optionally cleans column names
+- optionally performs conservative type coercion
+
+Most workflows begin with `city_list_datasets()`, which retrieves a live catalog
+of datasets available through the CITY_NAME Open Data Portal.
+
+Datasets can then be downloaded using either:
+
+- a human-readable catalog `key`
+- the official Socrata dataset UID, such as `"abcd-1234"`
+
+The human-readable key is designed to improve readability and usability, while
+the UID is the stable identifier used by the Socrata platform.
+
+## Core Functions
+
+The package provides three primary functions:
+
+- `city_list_datasets()` retrieves a live catalog of available CITY_NAME Open
+  Data datasets, including human-readable keys, Socrata UIDs, names, and other
+  available metadata.
+
+- `city_pull_dataset()` downloads cataloged datasets using either a
+  human-readable key or Socrata UID, with support for filtering, ordering, date
+  ranges, optional column-name cleaning, and optional type coercion.
+
+- `city_any_dataset()` downloads data directly from a valid Socrata JSON
+  endpoint without requiring the dataset to appear in the package catalog.
+
+Datasets retrieved through `city_pull_dataset()` support arguments including:
+
+- `limit`
+- `filters`
+- `date`
+- `from`
+- `to`
+- `date_field`
+- `where`
+- `order`
+- `clean_names`
+- `coerce_types`
+
+All functions return tibble outputs.
+
+Advanced users may also provide raw SoQL conditions through the `where`
+argument.
+
+SoQL, or Socrata Query Language, is the query syntax used by Socrata-powered
+Open Data portals. Additional information is available from the
+[Socrata developer documentation](https://dev.socrata.com/docs/queries/).
+
+---
+
+## Installation
+
+### Install from CRAN
+
+```r
+install.packages("cityOpenData")
+```
+
+### Install the development version from GitHub
+
+```r
+# install.packages("pak")
+pak::pak("YOUR_GITHUB_USERNAME/cityOpenData")
+```
+
+Alternatively:
+
+```r
+# install.packages("remotes")
+remotes::install_github("YOUR_GITHUB_USERNAME/cityOpenData")
+```
+
+---
+
+## Example
+
+```text
+library(cityOpenData)
+library(dplyr)
+
+# Browse available datasets
+catalog <- city_list_datasets()
+
+# Search for datasets containing a keyword
+catalog |>
+  filter(grepl("KEYWORD", name, ignore.case = TRUE)) |>
+  select(key, uid, name)
+
+# Pull a dataset using its UID
+example_data <- city_pull_dataset(
+  dataset = "abcd-1234",
+  limit = 100
+)
+
+# Pull the same dataset using its catalog key
+example_data_by_key <- city_pull_dataset(
+  dataset = "example_dataset_name",
+  limit = 100
+)
+
+# Pull filtered data
+filtered_data <- city_pull_dataset(
+  dataset = "abcd-1234",
+  limit = 100,
+  filters = list(
+    FILTER_FIELD = "VALUE_1"
+  )
+)
+```
+
+The `filters` argument accepts a named list and automatically constructs the
+corresponding SoQL filtering conditions.
+
+Multiple values may be supplied for one field:
+
+```text
+filtered_data <- city_pull_dataset(
+  dataset = "abcd-1234",
+  limit = 100,
+  filters = list(
+    FILTER_FIELD = c("VALUE_1", "VALUE_2")
+  )
+)
+```
+
+Multiple fields may also be combined:
+
+```text
+filtered_data <- city_pull_dataset(
+  dataset = "abcd-1234",
+  limit = 100,
+  filters = list(
+    FILTER_FIELD = "VALUE_1",
+    SECOND_FIELD = "SECOND_VALUE"
+  )
+)
+```
+
+Date filtering is available for datasets containing date or datetime fields:
+
+```text
+date_filtered_data <- city_pull_dataset(
+  dataset = "abcd-1234",
+  from = "2023-01-01",
+  to = "2024-01-01",
+  date_field = "DATE_FIELD",
+  limit = 100
+)
+```
+
+---
+
+## Accessing Any Socrata Endpoint
+
+When a dataset is not available through `city_list_datasets()`, it can be
+downloaded directly using `city_any_dataset()`.
+
+```text
+endpoint_data <- city_any_dataset(
+  json_link = "https://SOCRATA_DOMAIN/resource/abcd-1234.json",
+  limit = 100
+)
+```
+
+Use `city_pull_dataset()` for catalog-based workflows and
+`city_any_dataset()` when working directly with a Socrata JSON endpoint.
+
+---
+
+## Learn by Example
+
+A complete introductory workflow is available in the package vignette:
+
+```r
+vignette("getting-started", package = "cityOpenData")
+```
+
+The vignette demonstrates how to:
+
+- browse the dataset catalog
+- download data using a key or UID
+- filter records
+- work with date ranges
+- access direct JSON endpoints
+- perform a simple analysis
+
+---
+
+## Package Website
+
+Complete documentation is available on the package website:
+
+<https://YOUR_PACKAGE_WEBSITE/>
+
+The website includes:
+
+- function reference pages
+- installation instructions
+- introductory articles
+- vignettes
+- release notes
+
+---
+
+## Development
+
+To run the package tests locally:
+
+```r
+devtools::test()
+```
+
+To rebuild the documentation:
+
+```r
+devtools::document()
+```
+
+To run a complete package check:
+
+```r
+devtools::check()
+```
+
+To rebuild the pkgdown website:
+
+```r
+pkgdown::build_site()
+```
+
+---
+
+## Contributing
+
+Contributions are welcome.
+
+To report a bug, request a feature, or suggest an improvement, open an issue on
+GitHub:
+
+<https://github.com/YOUR_GITHUB_USERNAME/cityOpenData/issues>
+
+Pull requests are also welcome. Before submitting a pull request, please ensure
+that:
+
+- package documentation has been regenerated
+- automated tests pass
+- `devtools::check()` completes successfully
+- new behavior is documented and tested
+
+---
+
+## Author
+
+**YOUR_NAME**
+
+Email: [YOUR_EMAIL](mailto:YOUR_EMAIL)  
+GitHub: [@YOUR_GITHUB_USERNAME](https://github.com/YOUR_GITHUB_USERNAME)  
+
+---
+
+## Maintenance
+
+Because the package retrieves metadata dynamically from the live CITY_NAME Open
+Data catalog, newly published datasets may become available without requiring a
+package update.
+
+Package updates may still be required when the portal changes its catalog
+structure, dataset metadata fields, or API behavior.
+
+---
+
+## Disclaimer
+
+`cityOpenData` is an independent project and is not affiliated with, endorsed
+by, or maintained by CITY_NAME or the organization responsible for the CITY_NAME
+Open Data Portal.

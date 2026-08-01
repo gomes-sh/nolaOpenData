@@ -1,16 +1,47 @@
-Package: nolaOpenData
+Package: cityOpenData
 Type: Package
-Title: What the Package Does (Title Case)
+Title: A Lightweight Interface to CITY_NAME Open Data APIs
 Version: 0.1.0
-Authors@R: c(
+Authors@R:
     person(
-      "Jane", "Doe",
-      email = "jane@example.com",
-      role = c("aut", "cre")
+      "FIRST_NAME", "LAST_NAME",
+      email = "your.email@example.com",
+      role = c("aut", "cre"),
+      comment = c(
+        GitHub = "YOUR_GITHUB_USERNAME",
+        ORCID = "YOUR_ORCID"
+      )
     )
-  )
-Description: More about what it does (maybe more than one line).
-    Continuation lines should be indented.
-License: What license is it under?
+Description: Provides a unified set of helper functions to access datasets
+    from the CITY_NAME Open Data platform <https://SOCRATA_DOMAIN/>.
+    Functions return results as tidy tibbles and support optional filtering,
+    sorting, and row limits via the Socrata API. The package provides a
+    consistent interface for discovering and downloading datasets from the
+    CITY_NAME Open Data Portal using human-readable dataset keys or official
+    Socrata dataset identifiers.
+License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
+RoxygenNote: 7.3.3
+Imports:
+    curl,
+    dplyr,
+    httr,
+    janitor,
+    jsonlite,
+    rlang,
+    tibble
+Suggests:
+    ggplot2,
+    knitr,
+    rmarkdown,
+    scales,
+    testthat (>= 3.0.0),
+    tidyr,
+    vcr (>= 0.6.0),
+    webmockr
+URL: https://YOUR_WEBSITE, https://github.com/YOUR_GITHUB_USERNAME/cityOpenData
+BugReports: https://github.com/YOUR_GITHUB_USERNAME/cityOpenData/issues
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Depends:
+    R (>= 3.5)

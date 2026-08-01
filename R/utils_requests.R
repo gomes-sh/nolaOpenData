@@ -1,0 +1,327 @@
+# Internal helpers for CITY_NAME Open Data requests ####
+# - .city_endpoint(): constructs the Socrata endpoint URL from a dataset id
+# - .city_add_filters(): adds equality filters (and IN() for multi-values) as a Socrata $where clause
+# - .city_add_where(): appends a raw SoQL WHERE expression (for ranges, >=, <, etc.)
+# - .city_validate_date_yyyy_mm_dd(): validates Date or "YYYY-MM-DD" inputs
+# - .city_build_date_where(): constructs server-side date filters using a dataset's default_date_field
+# - .city_get_json(): executes the request and returns parsed JSON (flattened)
+# - .city_dataset_request(): common pattern for dataset wrapper functions + input validation (r07/r08)
+
+.city_abort <- function(msg) {
+  stop(msg, call. = FALSE)
+}
+
+# light, safe type coercion (numeric/logical + ISO datetime when obvious)
+.city_coerce_types <- function(df) {
+  if (!inherits(df, "data.frame") || nrow(df) == 0) return(df)
+
+  is_iso_datetime <- function(x) {
+    # Strict-ish ISO datetime:
+    # 2025-02-18T12:34:56
+    # 2025-02-18T12:34:56.123
+    # optional trailing Z or timezone offset
+    grepl(
+      "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:?\\d{2})?$",
+      x
+    )
+  }
+
+  parse_iso_datetime_safe <- function(x) {
+    # Normalize common endings so base::strptime doesn't choke on Z / offsets
+    x3 <- sub("Z$", "", x)
+    x3 <- sub("([+-]\\d{2}:?\\d{2})$", "", x3)
+
+    tryCatch(
+      as.POSIXct(x3, tz = "UTC", format = "%Y-%m-%dT%H:%M:%OS"),
+      error = function(e) rep(as.POSIXct(NA), length(x3))
+    )
+  }
+
+  for (nm in names(df)) {
+    x <- df[[nm]]
+    if (!is.character(x)) next
+
+    x2 <- trimws(x)
+    x2[x2 == ""] <- NA_character_
+
+    # Logical
+    xl <- tolower(x2)
+    if (all(is.na(xl) | xl %in% c("true", "false"))) {
+      df[[nm]] <- as.logical(xl)
+      next
+    }
+
+    # Numeric (always numeric; never integer to avoid overflow warnings)
+    xn <- gsub(",", "", x2, fixed = TRUE)
+    ok_num <- grepl("^[-+]?(\\d+\\.?\\d*|\\d*\\.?\\d+)$", xn) | is.na(xn)
+    if (all(ok_num)) {
+      num <- suppressWarnings(as.numeric(xn))
+      if (all(is.na(xn) | !is.na(num))) {
+        df[[nm]] <- num
+        next
+      }
+    }
+
+    # ISO-ish datetime (only if it REALLY matches + is short enough)
+    non_na <- x2[!is.na(x2)]
+    if (length(non_na) > 0) {
+      # If strings are huge, do not attempt datetime parsing
+      if (max(nchar(non_na), na.rm = TRUE) <= 64) {
+        dt_ok <- is_iso_datetime(non_na)
+        if (sum(dt_ok) / length(non_na) >= 0.95) {
+          parsed <- parse_iso_datetime_safe(x2)
+          # Only apply if parsing succeeded for most non-missing
+          if (sum(!is.na(parsed[!is.na(x2)])) / length(non_na) >= 0.95) {
+            df[[nm]] <- parsed
+            next
+          }
+        }
+      }
+    }
+  }
+
+  df
+}
+
+.city_postprocess <- function(df, clean_names = TRUE, coerce_types = TRUE) {
+  if (!inherits(df, "data.frame")) return(df)
+
+  if (isTRUE(clean_names)) {
+    df <- janitor::clean_names(df)
+  }
+  if (isTRUE(coerce_types)) {
+    df <- .city_coerce_types(df)
+  }
+
+  tibble::as_tibble(df, .name_repair = "minimal")
+}
+
+.city_validate_limit <- function(limit) {
+  if (length(limit) != 1 || is.na(limit)) .city_abort("`limit` must be a single, non-missing numeric value.")
+  if (!is.numeric(limit)) .city_abort("`limit` must be a single numeric value.")
+  if (limit < 0) .city_abort("`limit` must be between 0 and Inf.")
+  if (limit != floor(limit)) .city_abort("`limit` must be an integer (whole number).")
+  as.integer(limit)
+}
+
+.city_validate_timeout <- function(timeout_sec) {
+  if (length(timeout_sec) != 1 || is.na(timeout_sec)) {
+    .city_abort("`timeout_sec` must be a single, non-missing numeric value.")
+  }
+  if (!is.numeric(timeout_sec)) {
+    .city_abort("`timeout_sec` must be a single numeric value.")
+  }
+  if (timeout_sec <= 0) {
+    .city_abort("`timeout_sec` must be > 0.")
+  }
+  timeout_sec
+}
+
+.city_validate_filters <- function(filters) {
+  if (is.null(filters) || length(filters) == 0) return(list())
+
+  if (!is.list(filters)) {
+    .city_abort("`filters` must be a named list.")
+  }
+  if (is.null(names(filters)) || any(!nzchar(names(filters)))) {
+    .city_abort("`filters` must be a *named* list (all elements must have names).")
+  }
+  if (any(vapply(filters, function(x) length(x) == 0, logical(1)))) {
+    .city_abort("`filters` values cannot be empty.")
+  }
+  if (anyNA(unlist(filters))) {
+    .city_abort("`filters` cannot contain NA values.")
+  }
+
+  filters
+}
+
+.city_endpoint <- function(dataset_id) {
+  stopifnot(
+    is.character(dataset_id),
+    length(dataset_id) == 1,
+    nzchar(dataset_id)
+  )
+
+  paste0(
+    "https://SOCRATA_DOMAIN/resource/",
+    dataset_id,
+    ".json"
+  )
+}
+
+.city_add_filters <- function(query, filters) {
+  if (is.null(filters) || length(filters) == 0) return(query)
+
+  stopifnot(is.list(filters))
+
+  make_clause <- function(field, value) {
+    is_text <- is.character(value) || is.factor(value)
+
+    if (is.factor(value)) value <- as.character(value)
+    if (is.character(value)) value <- trimws(value)
+
+    value <- as.character(value)
+
+    if (is_text && any(!nzchar(value))) {
+      .city_abort("`filters` character values cannot be empty or whitespace-only.")
+    }
+
+    value <- gsub("'", "''", value, fixed = TRUE)
+    field_expr <- if (is_text) paste0("TRIM(", field, ")") else field
+
+    if (length(value) == 1) {
+      paste0(field_expr, " = '", value, "'")
+    } else {
+      vals <- paste0("'", value, "'", collapse = ", ")
+      paste0(field_expr, " IN (", vals, ")")
+    }
+  }
+
+  clauses <- mapply(make_clause, names(filters), filters, USE.NAMES = FALSE)
+  query[["$where"]] <- paste(clauses, collapse = " AND ")
+
+  query
+}
+
+# Allow passing a raw SoQL where clause (e.g., date ranges, inequalities)
+.city_add_where <- function(query, where) {
+  if (is.null(where) || length(where) == 0) return(query)
+
+  if (!is.character(where) || length(where) != 1 || is.na(where)) {
+    .city_abort("`where` must be a single non-missing character string.")
+  }
+  if (!nzchar(where)) return(query)
+
+  if (!is.null(query[["$where"]]) && nzchar(query[["$where"]])) {
+    query[["$where"]] <- paste0("(", query[["$where"]], ") AND (", where, ")")
+  } else {
+    query[["$where"]] <- where
+  }
+
+  query
+}
+
+.city_get_json <- function(endpoint, query, timeout_sec = 30) {
+  if (!curl::has_internet()) {
+    stop(
+      "No internet connection detected. This function requires access to the CITY_NAME Open Data portal.",
+      call. = FALSE
+    )
+  }
+
+  resp <- tryCatch(
+    httr::GET(endpoint, query = query, httr::timeout(timeout_sec)),
+    error = function(e) {
+      stop(
+        paste0(
+          "CITY_NAME Open Data request failed (network unavailable or API slow).",
+          "Try again later or increase `timeout_sec`.\n\n",
+          "Underlying error: ", conditionMessage(e)
+        ),
+        call. = FALSE
+      )
+    }
+  )
+
+  if (httr::http_error(resp)) {
+    status <- httr::status_code(resp)
+    body_txt <- tryCatch(
+      httr::content(resp, as = "text", encoding = "UTF-8"),
+      error = function(e) ""
+    )
+
+    stop(
+      paste0(
+        "CITY_NAME Open Data request failed with HTTP status ", status, ".\n",
+        "Try again later, or verify your filters.\n\n",
+        if (nzchar(body_txt)) paste0("Response: ", substr(body_txt, 1, 500)) else ""
+      ),
+      call. = FALSE
+    )
+  }
+
+  txt <- httr::content(resp, as = "text", encoding = "UTF-8")
+  jsonlite::fromJSON(txt, flatten = TRUE)
+}
+
+.city_dataset_request <- function(dataset_id,
+                                  limit = 10000,
+                                  filters = list(),
+                                  order = NULL,
+                                  where = NULL,
+                                  timeout_sec = 30,
+                                  clean_names = TRUE,
+                                  coerce_types = TRUE) {
+
+  # Input validation (r08)
+  limit <- .city_validate_limit(limit)
+  timeout_sec <- .city_validate_timeout(timeout_sec)
+  filters <- .city_validate_filters(filters)
+
+  endpoint <- .city_endpoint(dataset_id)
+
+  query_list <- list("$limit" = limit)
+
+  if (!is.null(order)) {
+    if (!is.character(order) || length(order) != 1 || is.na(order) || !nzchar(order)) {
+      .city_abort("`order` must be a single non-empty character string.")
+    }
+    query_list[["$order"]] <- order
+  }
+
+  query_list <- .city_add_filters(query_list, filters)
+  query_list <- .city_add_where(query_list, where)
+
+  data <- .city_get_json(endpoint, query_list, timeout_sec = timeout_sec)
+
+  out <- tibble::as_tibble(data, .name_repair = "minimal")
+
+  # reviewer r16/r17: optional post-processing pipeline
+  out <- .city_postprocess(out, clean_names = clean_names, coerce_types = coerce_types)
+
+  out
+}
+
+# Validate Date or "YYYY-MM-DD" string input and return normalized "YYYY-MM-DD"
+.city_validate_date_yyyy_mm_dd <- function(x, arg) {
+  if (is.null(x)) return(NULL)
+  if (inherits(x, "Date")) return(format(x, "%Y-%m-%d"))
+
+  if (!is.character(x) || length(x) != 1 || is.na(x) || !nzchar(x)) {
+    .city_abort(paste0("`", arg, "` must be a Date or a non-missing 'YYYY-MM-DD' string."))
+  }
+  if (!grepl("^\\d{4}-\\d{2}-\\d{2}$", x)) {
+    .city_abort(paste0("`", arg, "` must be in 'YYYY-MM-DD' format."))
+  }
+  x
+}
+
+# Build a SoQL WHERE clause for date filtering using the dataset's date field
+.city_build_date_where <- function(date_field, date = NULL, from = NULL, to = NULL) {
+  if (is.null(date_field) || is.na(date_field) || !nzchar(date_field)) return(NULL)
+
+  date <- .city_validate_date_yyyy_mm_dd(date, "date")
+  from <- .city_validate_date_yyyy_mm_dd(from, "from")
+  to   <- .city_validate_date_yyyy_mm_dd(to, "to")
+
+  if (!is.null(date) && (!is.null(from) || !is.null(to))) {
+    .city_abort("Use either `date` OR `from`/`to`, not both.")
+  }
+
+  to_float_ts <- function(d) paste0(d, "T00:00:00.000")
+
+  if (!is.null(date)) {
+    start <- to_float_ts(date)
+    end_date <- format(as.Date(date) + 1, "%Y-%m-%d")
+    end <- to_float_ts(end_date)
+    return(paste0(date_field, " >= '", start, "' AND ", date_field, " < '", end, "'"))
+  }
+
+  parts <- character(0)
+  if (!is.null(from)) parts <- c(parts, paste0(date_field, " >= '", to_float_ts(from), "'"))
+  if (!is.null(to))   parts <- c(parts, paste0(date_field, " < '", to_float_ts(to), "'"))
+  if (length(parts) == 0) return(NULL)
+
+  paste(parts, collapse = " AND ")
+}

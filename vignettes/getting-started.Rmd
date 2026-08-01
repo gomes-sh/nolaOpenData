@@ -1,0 +1,280 @@
+---
+title: "Getting Started with CITY_NAME Open Data"
+output: rmarkdown::html_vignette
+author: "YOUR_NAME"
+vignette: >
+  %\VignetteIndexEntry{Getting Started with CITY_NAME Open Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```text
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+```text
+library(cityOpenData)
+library(dplyr)
+library(ggplot2)
+```
+
+## Introduction
+
+Welcome to the `cityOpenData` package, an R package designed to provide convenient access to the CITY_NAME Open Data Portal.
+
+The package provides a streamlined interface for discovering and downloading datasets from CITY_NAME Open Data. It helps bridge the gap between raw Socrata API endpoints and tidy data analysis in R.
+
+The package provides three primary functions:
+
+- `city_list_datasets()` for browsing available datasets
+- `city_pull_dataset()` for downloading datasets using a catalog key or Socrata UID
+- `city_any_dataset()` for downloading data directly from a Socrata JSON endpoint
+
+## Listing Available Datasets
+
+The first step in a typical workflow is to use `city_list_datasets()` to retrieve the live CITY_NAME Open Data catalog.
+
+```text
+catalog <- city_list_datasets()
+
+catalog
+```
+
+The returned catalog includes information about the datasets available through the portal. Two especially important columns are:
+
+- `key`, a human-readable dataset identifier generated from the dataset name
+- `uid`, the official Socrata dataset identifier
+
+You can search the catalog for datasets containing a keyword.
+
+```text
+catalog |>
+  filter(grepl("KEYWORD", name, ignore.case = TRUE)) |>
+  select(key, uid, name)
+```
+
+Replace `KEYWORD` with a useful search term related to the example dataset selected for the package.
+
+## Pulling a Dataset
+
+The primary way to download data is with `city_pull_dataset()`.
+
+A dataset can be requested using either its human-readable catalog key or its official Socrata UID.
+
+### Pulling by UID
+
+```text
+example_data_uid <- city_pull_dataset(
+  dataset = "abcd-1234",
+  limit = 5
+)
+
+example_data_uid
+```
+
+### Pulling by Key
+
+```text
+example_data_key <- city_pull_dataset(
+  dataset = "example_dataset_name",
+  limit = 5
+)
+
+example_data_key
+```
+
+Both calls should return data from the same dataset.
+
+::: {.callout-tip}
+## Keys and UIDs
+
+Dataset keys are easier to read, while Socrata UIDs are more stable.
+
+For reproducible research and long-term workflows, using the official Socrata UID is generally recommended.
+:::
+
+## Filtering Data
+
+The `filters` argument can be used for simple exact-match filtering.
+
+```text
+filtered_data <- city_pull_dataset(
+  dataset = "abcd-1234",
+  limit = 25,
+  filters = list(
+    FILTER_FIELD = "VALUE_1"
+  )
+)
+
+filtered_data
+```
+
+You can confirm that the filter worked by inspecting the unique values in the selected field.
+
+```text
+filtered_data |>
+  distinct(FILTER_FIELD)
+```
+
+Multiple values can also be supplied.
+
+```text
+filtered_multiple <- city_pull_dataset(
+  dataset = "abcd-1234",
+  limit = 50,
+  filters = list(
+    FILTER_FIELD = c("VALUE_1", "VALUE_2")
+  )
+)
+
+filtered_multiple
+```
+
+Multiple fields can be combined within the same filter list.
+
+```text
+filtered_combination <- city_pull_dataset(
+  dataset = "abcd-1234",
+  limit = 50,
+  filters = list(
+    FILTER_FIELD = "VALUE_1",
+    SECOND_FIELD = "SECOND_VALUE"
+  )
+)
+
+filtered_combination
+```
+
+## Filtering by Date
+
+If the example dataset contains a date or datetime field, records can be filtered using `from`, `to`, and `date_field`.
+
+```text
+date_filtered_data <- city_pull_dataset(
+  dataset = "abcd-1234",
+  from = "2023-01-01",
+  to = "2024-01-01",
+  date_field = "DATE_FIELD",
+  limit = 100
+)
+
+date_filtered_data
+```
+
+The `from` date is inclusive, while the `to` date is exclusive.
+
+A single day can also be requested using the `date` argument.
+
+```text
+single_day_data <- city_pull_dataset(
+  dataset = "abcd-1234",
+  date = "2023-06-01",
+  date_field = "DATE_FIELD",
+  limit = 100
+)
+
+single_day_data
+```
+
+## Pulling Data from Any Socrata Endpoint
+
+The preferred workflow is to use `city_list_datasets()` together with `city_pull_dataset()`.
+
+However, when a dataset is not available in the package catalog, `city_any_dataset()` can download data directly from a Socrata JSON endpoint.
+
+CITY_NAME Open Data endpoints typically follow this structure:
+
+```text
+https://SOCRATA_DOMAIN/resource/<dataset_uid>.json
+```
+
+For example:
+
+```text
+https://SOCRATA_DOMAIN/resource/abcd-1234.json
+```
+
+The endpoint can then be supplied directly to `city_any_dataset()`.
+
+```text
+endpoint_data <- city_any_dataset(
+  json_link = "https://SOCRATA_DOMAIN/resource/abcd-1234.json",
+  limit = 5
+)
+
+endpoint_data
+```
+
+::: {.callout-tip}
+## Which function should you use?
+
+Use `city_pull_dataset()` when the dataset is available through `city_list_datasets()`.
+
+Use `city_any_dataset()` when you already have a valid Socrata JSON endpoint or when the dataset is not included in the package catalog.
+:::
+
+## Example Analysis
+
+Once the data have been downloaded, they can be analyzed using standard R tools.
+
+The following example counts the number of records in a categorical field.
+
+```text
+category_summary <- city_pull_dataset(
+  dataset = "abcd-1234",
+  limit = 500
+) |>
+  filter(!is.na(CATEGORY_FIELD)) |>
+  count(CATEGORY_FIELD, sort = TRUE)
+
+category_summary
+```
+
+The results can then be visualized.
+
+```text
+category_summary |>
+  slice_head(n = 10) |>
+  ggplot(
+    aes(
+      x = n,
+      y = reorder(CATEGORY_FIELD, n)
+    )
+  ) +
+  geom_col() +
+  theme_minimal() +
+  labs(
+    title = "Most Frequent Categories",
+    x = "Number of Records",
+    y = "Category"
+  )
+```
+
+This example demonstrates the complete workflow from discovering a dataset to downloading, filtering, summarizing, and visualizing it.
+
+## Summary
+
+The `cityOpenData` package provides a consistent interface for working with data from the CITY_NAME Open Data Portal.
+
+In this vignette, you learned how to:
+
+- browse available datasets using `city_list_datasets()`
+- download datasets by key or UID using `city_pull_dataset()`
+- filter data using fields, values, and dates
+- access a Socrata JSON endpoint using `city_any_dataset()`
+- perform a simple analysis and visualization
+
+These functions allow users to focus on analysis rather than manually constructing API requests.
+
+## How to Cite
+
+If you use this package for research or educational purposes, cite it using the package citation returned by:
+
+```text
+citation("cityOpenData")
+```
