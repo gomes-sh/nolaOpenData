@@ -1,9 +1,9 @@
 ---
-title: "Getting Started with CITY_NAME Open Data"
+title: "Getting Started with New Orleans Open Data"
 output: rmarkdown::html_vignette
-author: "YOUR_NAME"
+author: "Shelby Lyn Gomes"
 vignette: >
-  %\VignetteIndexEntry{Getting Started with CITY_NAME Open Data}
+  %\VignetteIndexEntry{Getting Started with New Orleans Open Data}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -18,29 +18,29 @@ knitr::opts_chunk$set(
 ```
 
 ```text
-library(cityOpenData)
+library(nolaOpenData)
 library(dplyr)
 library(ggplot2)
 ```
 
 ## Introduction
 
-Welcome to the `cityOpenData` package, an R package designed to provide convenient access to the CITY_NAME Open Data Portal.
+Welcome to the `nolaOpenData` package, an R package designed to provide convenient access to the New Orleans Open Data Portal.
 
-The package provides a streamlined interface for discovering and downloading datasets from CITY_NAME Open Data. It helps bridge the gap between raw Socrata API endpoints and tidy data analysis in R.
+The package provides a streamlined interface for discovering and downloading datasets from New Orleans Open Data. It helps bridge the gap between raw Socrata API endpoints and tidy data analysis in R.
 
 The package provides three primary functions:
 
-- `city_list_datasets()` for browsing available datasets
-- `city_pull_dataset()` for downloading datasets using a catalog key or Socrata UID
-- `city_any_dataset()` for downloading data directly from a Socrata JSON endpoint
+- `nola_list_datasets()` for browsing available datasets
+- `nola_pull_dataset()` for downloading datasets using a catalog key or Socrata UID
+- `nola_any_dataset()` for downloading data directly from a Socrata JSON endpoint
 
 ## Listing Available Datasets
 
-The first step in a typical workflow is to use `city_list_datasets()` to retrieve the live CITY_NAME Open Data catalog.
+The first step in a typical workflow is to use `nola_list_datasets()` to retrieve the live New Orleans Open Data catalog.
 
 ```text
-catalog <- city_list_datasets()
+catalog <- nola_list_datasets()
 
 catalog
 ```
@@ -54,23 +54,23 @@ You can search the catalog for datasets containing a keyword.
 
 ```text
 catalog |>
-  filter(grepl("KEYWORD", name, ignore.case = TRUE)) |>
+  filter(grepl("hiring", name, ignore.case = TRUE)) |>
   select(key, uid, name)
 ```
 
-Replace `KEYWORD` with a useful search term related to the example dataset selected for the package.
+Replace `hiring` with a useful search term related to the example dataset selected for the package.
 
 ## Pulling a Dataset
 
-The primary way to download data is with `city_pull_dataset()`.
+The primary way to download data is with `nola_pull_dataset()`.
 
 A dataset can be requested using either its human-readable catalog key or its official Socrata UID.
 
 ### Pulling by UID
 
 ```text
-example_data_uid <- city_pull_dataset(
-  dataset = "abcd-1234",
+example_data_uid <- nola_pull_dataset(
+  dataset = "wx2k-rsac",
   limit = 5
 )
 
@@ -80,8 +80,8 @@ example_data_uid
 ### Pulling by Key
 
 ```text
-example_data_key <- city_pull_dataset(
-  dataset = "example_dataset_name",
+example_data_key <- nola_pull_dataset(
+  dataset = "city_jobs_hiring_data",
   limit = 5
 )
 
@@ -103,11 +103,11 @@ For reproducible research and long-term workflows, using the official Socrata UI
 The `filters` argument can be used for simple exact-match filtering.
 
 ```text
-filtered_data <- city_pull_dataset(
-  dataset = "abcd-1234",
+filtered_data <- nola_pull_dataset(
+  dataset = "wx2k-rsac",
   limit = 25,
   filters = list(
-    FILTER_FIELD = "VALUE_1"
+    department = "Safety & Permits"
   )
 )
 
@@ -118,17 +118,17 @@ You can confirm that the filter worked by inspecting the unique values in the se
 
 ```text
 filtered_data |>
-  distinct(FILTER_FIELD)
+  distinct(department)
 ```
 
 Multiple values can also be supplied.
 
 ```text
-filtered_multiple <- city_pull_dataset(
-  dataset = "abcd-1234",
+filtered_multiple <- nola_pull_dataset(
+  dataset = "wx2k-rsac",
   limit = 50,
   filters = list(
-    FILTER_FIELD = c("VALUE_1", "VALUE_2")
+    department = c("Safety & Permits", "FIRE")
   )
 )
 
@@ -138,12 +138,12 @@ filtered_multiple
 Multiple fields can be combined within the same filter list.
 
 ```text
-filtered_combination <- city_pull_dataset(
-  dataset = "abcd-1234",
+filtered_combination <- nola_pull_dataset(
+  dataset = "wx2k-rsac",
   limit = 50,
   filters = list(
-    FILTER_FIELD = "VALUE_1",
-    SECOND_FIELD = "SECOND_VALUE"
+    department = "Safety & Permits",
+    job_title = "BUILDING INSPECTOR SUPERVISOR (CLASS CODE 2214)"
   )
 )
 
@@ -155,11 +155,11 @@ filtered_combination
 If the example dataset contains a date or datetime field, records can be filtered using `from`, `to`, and `date_field`.
 
 ```text
-date_filtered_data <- city_pull_dataset(
-  dataset = "abcd-1234",
-  from = "2023-01-01",
-  to = "2024-01-01",
-  date_field = "DATE_FIELD",
+date_filtered_data <- nola_pull_dataset(
+  dataset = "wx2k-rsac",
+  from = "2025-01-01",
+  to = "2026-01-01",
+  date_field = "start_date",
   limit = 100
 )
 
@@ -171,10 +171,10 @@ The `from` date is inclusive, while the `to` date is exclusive.
 A single day can also be requested using the `date` argument.
 
 ```text
-single_day_data <- city_pull_dataset(
-  dataset = "abcd-1234",
-  date = "2023-06-01",
-  date_field = "DATE_FIELD",
+single_day_data <- nola_pull_dataset(
+  dataset = "wx2k-rsac",
+  date = "2025-01-05",
+  date_field = "start_date",
   limit = 100
 )
 
@@ -183,27 +183,27 @@ single_day_data
 
 ## Pulling Data from Any Socrata Endpoint
 
-The preferred workflow is to use `city_list_datasets()` together with `city_pull_dataset()`.
+The preferred workflow is to use `nola_list_datasets()` together with `nola_pull_dataset()`.
 
-However, when a dataset is not available in the package catalog, `city_any_dataset()` can download data directly from a Socrata JSON endpoint.
+However, when a dataset is not available in the package catalog, `nola_any_dataset()` can download data directly from a Socrata JSON endpoint.
 
-CITY_NAME Open Data endpoints typically follow this structure:
+New Orleans Open Data endpoints typically follow this structure:
 
 ```text
-https://SOCRATA_DOMAIN/resource/<dataset_uid>.json
+https://data.nola.gov/resource/<dataset_uid>.json
 ```
 
 For example:
 
 ```text
-https://SOCRATA_DOMAIN/resource/abcd-1234.json
+https://data.nola.gov/resource/wx2k-rsac.json
 ```
 
-The endpoint can then be supplied directly to `city_any_dataset()`.
+The endpoint can then be supplied directly to `nola_any_dataset()`.
 
 ```text
-endpoint_data <- city_any_dataset(
-  json_link = "https://SOCRATA_DOMAIN/resource/abcd-1234.json",
+endpoint_data <- nola_any_dataset(
+  json_link = "https://data.nola.gov/resource/wx2k-rsac.json",
   limit = 5
 )
 
@@ -213,9 +213,9 @@ endpoint_data
 ::: {.callout-tip}
 ## Which function should you use?
 
-Use `city_pull_dataset()` when the dataset is available through `city_list_datasets()`.
+Use `nola_pull_dataset()` when the dataset is available through `nola_list_datasets()`.
 
-Use `city_any_dataset()` when you already have a valid Socrata JSON endpoint or when the dataset is not included in the package catalog.
+Use `nola_any_dataset()` when you already have a valid Socrata JSON endpoint or when the dataset is not included in the package catalog.
 :::
 
 ## Example Analysis
@@ -225,12 +225,12 @@ Once the data have been downloaded, they can be analyzed using standard R tools.
 The following example counts the number of records in a categorical field.
 
 ```text
-category_summary <- city_pull_dataset(
-  dataset = "abcd-1234",
+category_summary <- nola_pull_dataset(
+  dataset = "wx2k-rsac",
   limit = 500
 ) |>
-  filter(!is.na(CATEGORY_FIELD)) |>
-  count(CATEGORY_FIELD, sort = TRUE)
+  filter(!is.na(department)) |>
+  count(department, sort = TRUE)
 
 category_summary
 ```
@@ -243,7 +243,7 @@ category_summary |>
   ggplot(
     aes(
       x = n,
-      y = reorder(CATEGORY_FIELD, n)
+      y = reorder(department, n)
     )
   ) +
   geom_col() +
@@ -259,14 +259,14 @@ This example demonstrates the complete workflow from discovering a dataset to do
 
 ## Summary
 
-The `cityOpenData` package provides a consistent interface for working with data from the CITY_NAME Open Data Portal.
+The `nolaOpenData` package provides a consistent interface for working with data from the New Orleans Open Data Portal.
 
 In this vignette, you learned how to:
 
-- browse available datasets using `city_list_datasets()`
-- download datasets by key or UID using `city_pull_dataset()`
+- browse available datasets using `nola_list_datasets()`
+- download datasets by key or UID using `nola_pull_dataset()`
 - filter data using fields, values, and dates
-- access a Socrata JSON endpoint using `city_any_dataset()`
+- access a Socrata JSON endpoint using `nola_any_dataset()`
 - perform a simple analysis and visualization
 
 These functions allow users to focus on analysis rather than manually constructing API requests.
@@ -276,5 +276,5 @@ These functions allow users to focus on analysis rather than manually constructi
 If you use this package for research or educational purposes, cite it using the package citation returned by:
 
 ```text
-citation("cityOpenData")
+citation("nolaOpenData")
 ```

@@ -1,18 +1,18 @@
-# Internal helpers for CITY_NAME Open Data requests ####
-# - .city_endpoint(): constructs the Socrata endpoint URL from a dataset id
-# - .city_add_filters(): adds equality filters (and IN() for multi-values) as a Socrata $where clause
-# - .city_add_where(): appends a raw SoQL WHERE expression (for ranges, >=, <, etc.)
-# - .city_validate_date_yyyy_mm_dd(): validates Date or "YYYY-MM-DD" inputs
-# - .city_build_date_where(): constructs server-side date filters using a dataset's default_date_field
-# - .city_get_json(): executes the request and returns parsed JSON (flattened)
-# - .city_dataset_request(): common pattern for dataset wrapper functions + input validation (r07/r08)
+# Internal helpers for New Orleans Open Data requests ####
+# - .nola_endpoint(): constructs the Socrata endpoint URL from a dataset id
+# - .nola_add_filters(): adds equality filters (and IN() for multi-values) as a Socrata $where clause
+# - .nola_add_where(): appends a raw SoQL WHERE expression (for ranges, >=, <, etc.)
+# - .nola_validate_date_yyyy_mm_dd(): validates Date or "YYYY-MM-DD" inputs
+# - .nola_build_date_where(): constructs server-side date filters using a dataset's default_date_field
+# - .nola_get_json(): executes the request and returns parsed JSON (flattened)
+# - .nola_dataset_request(): common pattern for dataset wrapper functions + input validation (r07/r08)
 
-.city_abort <- function(msg) {
+.nola_abort <- function(msg) {
   stop(msg, call. = FALSE)
 }
 
 # light, safe type coercion (numeric/logical + ISO datetime when obvious)
-.city_coerce_types <- function(df) {
+.nola_coerce_types <- function(df) {
   if (!inherits(df, "data.frame") || nrow(df) == 0) return(df)
 
   is_iso_datetime <- function(x) {
@@ -83,60 +83,60 @@
   df
 }
 
-.city_postprocess <- function(df, clean_names = TRUE, coerce_types = TRUE) {
+.nola_postprocess <- function(df, clean_names = TRUE, coerce_types = TRUE) {
   if (!inherits(df, "data.frame")) return(df)
 
   if (isTRUE(clean_names)) {
     df <- janitor::clean_names(df)
   }
   if (isTRUE(coerce_types)) {
-    df <- .city_coerce_types(df)
+    df <- .nola_coerce_types(df)
   }
 
   tibble::as_tibble(df, .name_repair = "minimal")
 }
 
-.city_validate_limit <- function(limit) {
-  if (length(limit) != 1 || is.na(limit)) .city_abort("`limit` must be a single, non-missing numeric value.")
-  if (!is.numeric(limit)) .city_abort("`limit` must be a single numeric value.")
-  if (limit < 0) .city_abort("`limit` must be between 0 and Inf.")
-  if (limit != floor(limit)) .city_abort("`limit` must be an integer (whole number).")
+.nola_validate_limit <- function(limit) {
+  if (length(limit) != 1 || is.na(limit)) .nola_abort("`limit` must be a single, non-missing numeric value.")
+  if (!is.numeric(limit)) .nola_abort("`limit` must be a single numeric value.")
+  if (limit < 0) .nola_abort("`limit` must be between 0 and Inf.")
+  if (limit != floor(limit)) .nola_abort("`limit` must be an integer (whole number).")
   as.integer(limit)
 }
 
-.city_validate_timeout <- function(timeout_sec) {
+.nola_validate_timeout <- function(timeout_sec) {
   if (length(timeout_sec) != 1 || is.na(timeout_sec)) {
-    .city_abort("`timeout_sec` must be a single, non-missing numeric value.")
+    .nola_abort("`timeout_sec` must be a single, non-missing numeric value.")
   }
   if (!is.numeric(timeout_sec)) {
-    .city_abort("`timeout_sec` must be a single numeric value.")
+    .nola_abort("`timeout_sec` must be a single numeric value.")
   }
   if (timeout_sec <= 0) {
-    .city_abort("`timeout_sec` must be > 0.")
+    .nola_abort("`timeout_sec` must be > 0.")
   }
   timeout_sec
 }
 
-.city_validate_filters <- function(filters) {
+.nola_validate_filters <- function(filters) {
   if (is.null(filters) || length(filters) == 0) return(list())
 
   if (!is.list(filters)) {
-    .city_abort("`filters` must be a named list.")
+    .nola_abort("`filters` must be a named list.")
   }
   if (is.null(names(filters)) || any(!nzchar(names(filters)))) {
-    .city_abort("`filters` must be a *named* list (all elements must have names).")
+    .nola_abort("`filters` must be a *named* list (all elements must have names).")
   }
   if (any(vapply(filters, function(x) length(x) == 0, logical(1)))) {
-    .city_abort("`filters` values cannot be empty.")
+    .nola_abort("`filters` values cannot be empty.")
   }
   if (anyNA(unlist(filters))) {
-    .city_abort("`filters` cannot contain NA values.")
+    .nola_abort("`filters` cannot contain NA values.")
   }
 
   filters
 }
 
-.city_endpoint <- function(dataset_id) {
+.nola_endpoint <- function(dataset_id) {
   stopifnot(
     is.character(dataset_id),
     length(dataset_id) == 1,
@@ -144,13 +144,13 @@
   )
 
   paste0(
-    "https://SOCRATA_DOMAIN/resource/",
+    "https://data.nola.gov/resource/",
     dataset_id,
     ".json"
   )
 }
 
-.city_add_filters <- function(query, filters) {
+.nola_add_filters <- function(query, filters) {
   if (is.null(filters) || length(filters) == 0) return(query)
 
   stopifnot(is.list(filters))
@@ -164,7 +164,7 @@
     value <- as.character(value)
 
     if (is_text && any(!nzchar(value))) {
-      .city_abort("`filters` character values cannot be empty or whitespace-only.")
+      .nola_abort("`filters` character values cannot be empty or whitespace-only.")
     }
 
     value <- gsub("'", "''", value, fixed = TRUE)
@@ -185,11 +185,11 @@
 }
 
 # Allow passing a raw SoQL where clause (e.g., date ranges, inequalities)
-.city_add_where <- function(query, where) {
+.nola_add_where <- function(query, where) {
   if (is.null(where) || length(where) == 0) return(query)
 
   if (!is.character(where) || length(where) != 1 || is.na(where)) {
-    .city_abort("`where` must be a single non-missing character string.")
+    .nola_abort("`where` must be a single non-missing character string.")
   }
   if (!nzchar(where)) return(query)
 
@@ -202,10 +202,10 @@
   query
 }
 
-.city_get_json <- function(endpoint, query, timeout_sec = 30) {
+.nola_get_json <- function(endpoint, query, timeout_sec = 30) {
   if (!curl::has_internet()) {
     stop(
-      "No internet connection detected. This function requires access to the CITY_NAME Open Data portal.",
+      "No internet connection detected. This function requires access to the New Orleans Open Data portal.",
       call. = FALSE
     )
   }
@@ -215,7 +215,7 @@
     error = function(e) {
       stop(
         paste0(
-          "CITY_NAME Open Data request failed (network unavailable or API slow).",
+          "New Orleans Open Data request failed (network unavailable or API slow).",
           "Try again later or increase `timeout_sec`.\n\n",
           "Underlying error: ", conditionMessage(e)
         ),
@@ -233,7 +233,7 @@
 
     stop(
       paste0(
-        "CITY_NAME Open Data request failed with HTTP status ", status, ".\n",
+        "New Orleans Open Data request failed with HTTP status ", status, ".\n",
         "Try again later, or verify your filters.\n\n",
         if (nzchar(body_txt)) paste0("Response: ", substr(body_txt, 1, 500)) else ""
       ),
@@ -245,7 +245,7 @@
   jsonlite::fromJSON(txt, flatten = TRUE)
 }
 
-.city_dataset_request <- function(dataset_id,
+.nola_dataset_request <- function(dataset_id,
                                   limit = 10000,
                                   filters = list(),
                                   order = NULL,
@@ -255,58 +255,58 @@
                                   coerce_types = TRUE) {
 
   # Input validation (r08)
-  limit <- .city_validate_limit(limit)
-  timeout_sec <- .city_validate_timeout(timeout_sec)
-  filters <- .city_validate_filters(filters)
+  limit <- .nola_validate_limit(limit)
+  timeout_sec <- .nola_validate_timeout(timeout_sec)
+  filters <- .nola_validate_filters(filters)
 
-  endpoint <- .city_endpoint(dataset_id)
+  endpoint <- .nola_endpoint(dataset_id)
 
   query_list <- list("$limit" = limit)
 
   if (!is.null(order)) {
     if (!is.character(order) || length(order) != 1 || is.na(order) || !nzchar(order)) {
-      .city_abort("`order` must be a single non-empty character string.")
+      .nola_abort("`order` must be a single non-empty character string.")
     }
     query_list[["$order"]] <- order
   }
 
-  query_list <- .city_add_filters(query_list, filters)
-  query_list <- .city_add_where(query_list, where)
+  query_list <- .nola_add_filters(query_list, filters)
+  query_list <- .nola_add_where(query_list, where)
 
-  data <- .city_get_json(endpoint, query_list, timeout_sec = timeout_sec)
+  data <- .nola_get_json(endpoint, query_list, timeout_sec = timeout_sec)
 
   out <- tibble::as_tibble(data, .name_repair = "minimal")
 
   # reviewer r16/r17: optional post-processing pipeline
-  out <- .city_postprocess(out, clean_names = clean_names, coerce_types = coerce_types)
+  out <- .nola_postprocess(out, clean_names = clean_names, coerce_types = coerce_types)
 
   out
 }
 
 # Validate Date or "YYYY-MM-DD" string input and return normalized "YYYY-MM-DD"
-.city_validate_date_yyyy_mm_dd <- function(x, arg) {
+.nola_validate_date_yyyy_mm_dd <- function(x, arg) {
   if (is.null(x)) return(NULL)
   if (inherits(x, "Date")) return(format(x, "%Y-%m-%d"))
 
   if (!is.character(x) || length(x) != 1 || is.na(x) || !nzchar(x)) {
-    .city_abort(paste0("`", arg, "` must be a Date or a non-missing 'YYYY-MM-DD' string."))
+    .nola_abort(paste0("`", arg, "` must be a Date or a non-missing 'YYYY-MM-DD' string."))
   }
   if (!grepl("^\\d{4}-\\d{2}-\\d{2}$", x)) {
-    .city_abort(paste0("`", arg, "` must be in 'YYYY-MM-DD' format."))
+    .nola_abort(paste0("`", arg, "` must be in 'YYYY-MM-DD' format."))
   }
   x
 }
 
 # Build a SoQL WHERE clause for date filtering using the dataset's date field
-.city_build_date_where <- function(date_field, date = NULL, from = NULL, to = NULL) {
+.nola_build_date_where <- function(date_field, date = NULL, from = NULL, to = NULL) {
   if (is.null(date_field) || is.na(date_field) || !nzchar(date_field)) return(NULL)
 
-  date <- .city_validate_date_yyyy_mm_dd(date, "date")
-  from <- .city_validate_date_yyyy_mm_dd(from, "from")
-  to   <- .city_validate_date_yyyy_mm_dd(to, "to")
+  date <- .nola_validate_date_yyyy_mm_dd(date, "date")
+  from <- .nola_validate_date_yyyy_mm_dd(from, "from")
+  to   <- .nola_validate_date_yyyy_mm_dd(to, "to")
 
   if (!is.null(date) && (!is.null(from) || !is.null(to))) {
-    .city_abort("Use either `date` OR `from`/`to`, not both.")
+    .nola_abort("Use either `date` OR `from`/`to`, not both.")
   }
 
   to_float_ts <- function(d) paste0(d, "T00:00:00.000")

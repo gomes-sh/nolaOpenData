@@ -1,27 +1,33 @@
-Package: cityOpenData
+Package: nolaOpenData
 Type: Package
-Title: A Lightweight Interface to CITY_NAME Open Data APIs
-Version: 0.1.0
-Authors@R:
-    person(
-      "FIRST_NAME", "LAST_NAME",
-      email = "your.email@example.com",
-      role = c("aut", "cre"),
-      comment = c(
-        GitHub = "YOUR_GITHUB_USERNAME",
-        ORCID = "YOUR_ORCID"
-      )
+Title: A Lightweight Interface to New Orleans Open Data APIs
+Version: 0.1.1
+Authors@R: 
+    c(
+      person("Shelby Lyn", "Gomes", 
+             email = "gomessh@mailbox.org", 
+             role = c("aut"),
+             comment = c(
+               GitHub = "gomes-sh"
+             )),
+      person("Christian", "Martinez", 
+             email = "c.martinez0@outlook.com", 
+             role = c("aut", "cre"),
+             comment = c(
+               GitHub = "martinezc1",
+               ORCID = "0009-0005-6026-6454"
+             ))
     )
 Description: Provides a unified set of helper functions to access datasets
-    from the CITY_NAME Open Data platform <https://SOCRATA_DOMAIN/>.
+    from the New Orleans Open Data platform <https://data.nola.gov/>.
     Functions return results as tidy tibbles and support optional filtering,
     sorting, and row limits via the Socrata API. The package provides a
     consistent interface for discovering and downloading datasets from the
-    CITY_NAME Open Data Portal using human-readable dataset keys or official
+    San Francisco Open Data Portal using human-readable dataset keys or official
     Socrata dataset identifiers.
 License: MIT + file LICENSE
-Encoding: UTF-8
-RoxygenNote: 7.3.3
+ncoding: UTF-8
+RoxygenNote: 8.0.0
 Imports:
     curl,
     dplyr,
@@ -39,8 +45,8 @@ Suggests:
     tidyr,
     vcr (>= 0.6.0),
     webmockr
-URL: https://YOUR_WEBSITE, https://github.com/YOUR_GITHUB_USERNAME/cityOpenData
-BugReports: https://github.com/YOUR_GITHUB_USERNAME/cityOpenData/issues
+URL: https://github.com/gomes-sh/nolaOpenData
+BugReports: https://github.com/gomes-sh/nolaOpenData/issues
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 Depends:

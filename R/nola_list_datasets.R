@@ -1,12 +1,12 @@
 #' List available New Orleans Open Data datasets
 #'
 #' Retrieves a live catalog of New Orleans Open Data datasets from the New Orleans
-#' Open Data Portal catalog table (`dhg4-3vbu`) and returns dataset
+#' Open Data Portal catalog table (`r6b2-hfba`) and returns dataset
 #' metadata that can be used with [nola_pull_dataset()].
 #'
-#' The returned tibble includes both the official Socrata dataset `uid` and a
+#' The returned tibble includes both the official 'Socrata' dataset `uid` and a
 #' human-readable `key`. The `uid` is the stable identifier used by the New Orleans
-#' Open Data Portal and Socrata API, while the `key` is generated from the
+#' Open Data Portal and 'Socrata' API, while the `key` is generated from the
 #' dataset name using [janitor::make_clean_names()] to make datasets easier to
 #' reference in R code, especially in classroom and reproducible research
 #' settings.
@@ -19,7 +19,7 @@
 #'   columns include:
 #'   \describe{
 #'     \item{key}{A human-readable dataset key generated from the dataset name.}
-#'     \item{uid}{The official Socrata dataset identifier used by New Orleans Open
+#'     \item{uid}{The official 'Socrata' dataset identifier used by New Orleans Open
 #'       Data.}
 #'     \item{name}{The dataset name from the New Orleans Open Data catalog.}
 #'   }
@@ -35,7 +35,7 @@
 #'
 #'   # Search for datasets containing a keyword
 #'   catalog[
-#'     grepl("KEYWORD", catalog$name, ignore.case = TRUE),
+#'     grepl("Hiring", catalog$name, ignore.case = TRUE),
 #'     c("key", "uid", "name")
 #'   ]
 #' }
@@ -48,7 +48,7 @@ nola_list_datasets <- function() {
 
 .nola_catalog_tbl <- function() {
   raw <- .nola_dataset_request(
-    dataset_id = "CATALOG_DATASET_ID",
+    dataset_id = "r6b2-hfba",
     limit = 50000,
     timeout_sec = 30,
     clean_names = TRUE,
@@ -56,9 +56,9 @@ nola_list_datasets <- function() {
   )
 
   raw |>
-    dplyr::filter(.data_source_format$type == "Excel") |>
+    dplyr::filter(.data$type == "dataset") |>
     dplyr::mutate(
-      key = janitor::make_clean_names(.data$dataset)
+      key = janitor::make_clean_names(.data$name)
     ) |>
     dplyr::filter(!is.na(.data$uid), nzchar(.data$uid)) |>
     dplyr::distinct(.data$uid, .keep_all = TRUE) |>

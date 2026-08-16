@@ -1,11 +1,11 @@
-#' Pull a CITY_NAME Open Data dataset
+#' Pull a New Orleans Open Data dataset
 #'
-#' Downloads a dataset from the CITY_NAME Open Data Socrata API using either a
+#' Downloads a dataset from the New Orleans Open Data Socrata API using either a
 #' human-readable catalog `key` or the official Socrata dataset `uid` returned by
-#' [city_list_datasets()].
+#' [nola_list_datasets()].
 #'
-#' When a catalog `key` is supplied, `city_pull_dataset()` first retrieves the
-#' live CITY_NAME Open Data catalog to look up the corresponding Socrata `uid`,
+#' When a catalog `key` is supplied, `nola_pull_dataset()` first retrieves the
+#' live New Orleans Open Data catalog to look up the corresponding Socrata `uid`,
 #' then sends a second request to download the dataset itself. Supplying a `uid`
 #' directly is more stable and avoids ambiguity, while keys are provided for
 #' readability and classroom-friendly workflows.
@@ -15,8 +15,8 @@
 #' metadata, Socrata UIDs are the most stable identifiers.
 #'
 #' @param dataset A single dataset `key` or Socrata dataset `uid` from
-#'   [city_list_datasets()]. For example, a key may look like
-#'   `"example_dataset_name"`, while a UID may look like `"abcd-1234"`.
+#'   [nola_list_datasets()]. For example, a key may look like
+#'   `"example_dataset_name"`, while a UID may look like `"wx2k-rsac"`.
 #' @param limit Number of rows to retrieve. Defaults to 10,000.
 #' @param filters Optional named list of exact-match filters. Each list name
 #'   should be a field name in the dataset, and each value should be the value
@@ -31,9 +31,9 @@
 #' @param date_field Optional date or datetime column to use with `date`,
 #'   `from`, or `to`. This must be supplied when any date filter is used. Users
 #'   can identify available date columns by inspecting the dataset on the
-#'   CITY_NAME Open Data Portal or by pulling a small sample with `limit`.
+#'   New Orleans Open Data Portal or by pulling a small sample with `limit`.
 #' @param where Optional raw SoQL `WHERE` clause for advanced filtering. SoQL is
-#'   the Socrata Query Language used by CITY_NAME Open Data. If `date`, `from`,
+#'   the Socrata Query Language used by New Orleans Open Data. If `date`, `from`,
 #'   or `to` are also supplied, their generated conditions are combined with
 #'   `where` using `AND`.
 #' @param order Optional raw SoQL `ORDER BY` clause, such as
@@ -47,13 +47,13 @@
 #'   as the target type. This helps avoid unsafe conversions when source data are
 #'   inconsistent.
 #'
-#' @return A tibble containing rows from the requested CITY_NAME Open Data
+#' @return A tibble containing rows from the requested New Orleans Open Data
 #'   dataset.
 #'
 #' @details
-#' `city_pull_dataset()` is designed for common catalog-based workflows. For
+#' `nola_pull_dataset()` is designed for common catalog-based workflows. For
 #' arbitrary Socrata JSON endpoints that are not included in the package catalog,
-#' use [city_any_dataset()].
+#' use [nola_any_dataset()].
 #'
 #' The `filters` argument is intended for simple exact-match filtering. For more
 #' complex conditions, use the `where` argument with raw SoQL syntax.
@@ -73,45 +73,45 @@
 #' @examples
 #' if (interactive() && curl::has_internet()) {
 #'   # Pull by human-readable key
-#'   city_pull_dataset("example_dataset_name", limit = 3)
+#'   nola_pull_dataset("city_jobs_hiring_data", limit = 3)
 #'
 #'   # Pull by Socrata UID
-#'   city_pull_dataset("abcd-1234", limit = 3)
+#'   nola_pull_dataset("wx2k-rsac", limit = 3)
 #'
 #'   # Filter to one value
-#'   city_pull_dataset(
-#'     "abcd-1234",
+#'   nola_pull_dataset(
+#'     "wx2k-rsac",
 #'     limit = 3,
-#'     filters = list(FILTER_FIELD = "VALUE_1")
+#'     filters = list(department = "Safety & Permits")
 #'   )
 #'
 #'   # Filter to multiple values
-#'   city_pull_dataset(
-#'     "abcd-1234",
+#'   nola_pull_dataset(
+#'     "wx2k-rsac",
 #'     limit = 10,
-#'     filters = list(FILTER_FIELD = c("VALUE_1", "VALUE_2"))
+#'     filters = list(department = c("Safety & Permits", "FIRE"))
 #'   )
 #'
 #'   # Date filtering
-#'   city_pull_dataset(
-#'     "abcd-1234",
-#'     from = "2023-01-01",
-#'     to = "2024-01-01",
-#'     date_field = "DATE_FIELD",
+#'   nola_pull_dataset(
+#'     "wx2k-rsac",
+#'     from = "2025-01-01",
+#'     to = "2026-01-01",
+#'     date_field = "start_date",
 #'     limit = 100
 #'   )
 #'
 #'   # Advanced filtering with raw SoQL
-#'   city_pull_dataset(
-#'     "abcd-1234",
-#'     where = "FILTER_FIELD = 'VALUE_1' AND SECOND_FIELD = 'VALUE_2'",
-#'     order = "DATE_FIELD DESC",
+#'   nola_pull_dataset(
+#'     "wx2k-rsac",
+#'     where = "department = 'Safety & Permits' AND job_title = 'BUILDING INSPECTOR SUPERVISOR (CLASS CODE 2214)'",
+#'     order = "start_date DESC",
 #'     limit = 100
 #'   )
 #' }
 #'
 #' @export
-city_pull_dataset <- function(dataset,
+nola_pull_dataset <- function(dataset,
                               limit = 10000,
                               filters = list(),
                               date = NULL,
@@ -135,7 +135,7 @@ city_pull_dataset <- function(dataset,
     )
   }
 
-  cat_tbl <- .city_catalog_tbl()
+  cat_tbl <- .nola_catalog_tbl()
 
   # sanity checks on required columns
   req <- c("key", "uid")
@@ -162,7 +162,7 @@ city_pull_dataset <- function(dataset,
     stop(
       paste0(
         "Unknown dataset: '", dataset, "'. ",
-        "Use `city_list_datasets()` to see available keys and UIDs."
+        "Use `nola_list_datasets()` to see available keys and UIDs."
       ),
       call. = FALSE
     )
@@ -186,7 +186,7 @@ city_pull_dataset <- function(dataset,
        !is.character(date_field) ||
        length(date_field) != 1 ||
        !nzchar(date_field))) {
-    .city_abort(
+    .nola_abort(
       paste0(
         "If `date`, `from`, or `to` are supplied, you must also ",
         "provide a single non-empty `date_field`."
@@ -194,7 +194,7 @@ city_pull_dataset <- function(dataset,
     )
   }
 
-  date_where <- .city_build_date_where(
+  date_where <- .nola_build_date_where(
     date_field = date_field,
     date = date,
     from = from,
@@ -217,7 +217,7 @@ city_pull_dataset <- function(dataset,
     }
   }
 
-  .city_dataset_request(
+  .nola_dataset_request(
     dataset_id = uid,
     limit = limit,
     filters = filters,

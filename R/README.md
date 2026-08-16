@@ -1,31 +1,32 @@
----
-output: github_document
----
 
 # nolaOpenData
 
-[![CRAN downloads](https://cranlogs.r-pkg.org/badges/grand-total/nolaOpenData?color=blue)](https://r-pkg.org/pkg/nolaOpenData)
-[![Lifecycle: stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html)
-[![Project Status: Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![CRAN
+downloads](https://cranlogs.r-pkg.org/badges/grand-total/nolaOpenData?color=blue)](https://r-pkg.org/pkg/nolaOpenData)
+[![Lifecycle:
+stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html)
+[![Project Status:
+Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 
-`nolaOpenData` provides a lightweight R interface to the
-[New Orleans Open Data Portal](https://data.nola.gov/).
+`nolaOpenData` provides a lightweight R interface to the [New Orleans
+Open Data Portal](https://data.nola.gov/).
 
-The package allows users to search, filter, and download datasets from the
-New Orleans Open Data Portal directly into R without manually constructing API
-queries, handling JSON responses, or performing type conversion.
+The package allows users to search, filter, and download datasets from
+the New Orleans Open Data Portal directly into R without manually
+constructing API queries, handling JSON responses, or performing type
+conversion.
 
 Designed for students, educators, researchers, journalists, civic
-technologists, and analysts, `nolaOpenData` reduces the technical overhead
-required to begin working with municipal Open Data while preserving access to
-the underlying Socrata infrastructure.
+technologists, and analysts, `nolaOpenData` reduces the technical
+overhead required to begin working with municipal Open Data while
+preserving access to the underlying Socrata infrastructure.
 
----
+------------------------------------------------------------------------
 
 ## How `nolaOpenData` Works
 
-The package provides a streamlined interface to the New Orleans Open Data
-Portal's Socrata API.
+The package provides a streamlined interface to the New Orleans Open
+Data Portal’s Socrata API.
 
 Internally, `nolaOpenData`:
 
@@ -36,33 +37,36 @@ Internally, `nolaOpenData`:
 - optionally cleans column names
 - optionally performs conservative type coercion
 
-Most workflows begin with `nola_list_datasets()`, which retrieves a live catalog
-of datasets available through the New Orleans Open Data Portal.
+Most workflows begin with `nola_list_datasets()`, which retrieves a live
+catalog of datasets available through the New Orleans Open Data Portal.
 
 Datasets can then be downloaded using either:
 
 - a human-readable catalog `key`
 - the official Socrata dataset UID, such as `"wx2k-rsac"`
 
-The human-readable key is designed to improve readability and usability, while
-the UID is the stable identifier used by the Socrata platform.
+The human-readable key is designed to improve readability and usability,
+while the UID is the stable identifier used by the Socrata platform.
 
 ## Core Functions
 
 The package provides three primary functions:
 
-- `nola_list_datasets()` retrieves a live catalog of available New Orleans Open
-  Data datasets, including human-readable keys, Socrata UIDs, names, and other
-  available metadata.
+- `nola_list_datasets()` retrieves a live catalog of available New
+  Orleans Open Data datasets, including human-readable keys, Socrata
+  UIDs, names, and other available metadata.
 
 - `nola_pull_dataset()` downloads cataloged datasets using either a
-  human-readable key or Socrata UID, with support for filtering, ordering, date
-  ranges, optional column-name cleaning, and optional type coercion.
+  human-readable key or Socrata UID, with support for filtering,
+  ordering, date ranges, optional column-name cleaning, and optional
+  type coercion.
 
 - `nola_any_dataset()` downloads data directly from a valid Socrata JSON
-  endpoint without requiring the dataset to appear in the package catalog.
+  endpoint without requiring the dataset to appear in the package
+  catalog.
 
-Datasets retrieved through `nola_pull_dataset()` support arguments including:
+Datasets retrieved through `nola_pull_dataset()` support arguments
+including:
 
 - `limit`
 - `filters`
@@ -80,39 +84,40 @@ All functions return tibble outputs.
 Advanced users may also provide raw SoQL conditions through the `where`
 argument.
 
-SoQL, or Socrata Query Language, is the query syntax used by Socrata-powered
-Open Data portals. Additional information is available from the
-[Socrata developer documentation](https://dev.socrata.com/docs/queries/).
+SoQL, or Socrata Query Language, is the query syntax used by
+Socrata-powered Open Data portals. Additional information is available
+from the [Socrata developer
+documentation](https://dev.socrata.com/docs/queries/).
 
----
+------------------------------------------------------------------------
 
 ## Installation
 
 ### Install from CRAN
 
-```r
+``` r
 install.packages("nolaOpenData")
 ```
 
 ### Install the development version from GitHub
 
-```r
+``` r
 # install.packages("pak")
 pak::pak("gomes-sh/nolaOpenData")
 ```
 
 Alternatively:
 
-```r
+``` r
 # install.packages("remotes")
 remotes::install_github("gomes-sh/nolaOpenData")
 ```
 
----
+------------------------------------------------------------------------
 
 ## Example
 
-```text
+``` text
 library(nolaOpenData)
 library(dplyr)
 
@@ -146,12 +151,12 @@ filtered_data <- nola_pull_dataset(
 )
 ```
 
-The `filters` argument accepts a named list and automatically constructs the
-corresponding SoQL filtering conditions.
+The `filters` argument accepts a named list and automatically constructs
+the corresponding SoQL filtering conditions.
 
 Multiple values may be supplied for one field:
 
-```text
+``` text
 filtered_data <- nola_pull_dataset(
   dataset = "wx2k-rsac",
   limit = 100,
@@ -163,7 +168,7 @@ filtered_data <- nola_pull_dataset(
 
 Multiple fields may also be combined:
 
-```text
+``` text
 filtered_data <- nola_pull_dataset(
   dataset = "wx2k-rsac",
   limit = 100,
@@ -174,9 +179,10 @@ filtered_data <- nola_pull_dataset(
 )
 ```
 
-Date filtering is available for datasets containing date or datetime fields:
+Date filtering is available for datasets containing date or datetime
+fields:
 
-```text
+``` text
 date_filtered_data <- nola_pull_dataset(
   dataset = "wx2k-rsac",
   from = "2025-01-01",
@@ -186,14 +192,14 @@ date_filtered_data <- nola_pull_dataset(
 )
 ```
 
----
+------------------------------------------------------------------------
 
 ## Accessing Any Socrata Endpoint
 
-When a dataset is not available through `nola_list_datasets()`, it can be
-downloaded directly using `nola_any_dataset()`.
+When a dataset is not available through `nola_list_datasets()`, it can
+be downloaded directly using `nola_any_dataset()`.
 
-```text
+``` text
 endpoint_data <- nola_any_dataset(
   json_link = "https://data.nola.gov/resource/wx2k-rsac.json",
   limit = 100
@@ -203,13 +209,13 @@ endpoint_data <- nola_any_dataset(
 Use `nola_pull_dataset()` for catalog-based workflows and
 `nola_any_dataset()` when working directly with a Socrata JSON endpoint.
 
----
+------------------------------------------------------------------------
 
 ## Learn by Example
 
 A complete introductory workflow is available in the package vignette:
 
-```r
+``` r
 vignette("getting-started", package = "nolaOpenData")
 ```
 
@@ -222,7 +228,7 @@ The vignette demonstrates how to:
 - access direct JSON endpoints
 - perform a simple analysis
 
----
+------------------------------------------------------------------------
 
 ## Package Website
 
@@ -238,77 +244,77 @@ The website includes:
 - vignettes
 - release notes
 
----
+------------------------------------------------------------------------
 
 ## Development
 
 To run the package tests locally:
 
-```r
+``` r
 devtools::test()
 ```
 
 To rebuild the documentation:
 
-```r
+``` r
 devtools::document()
 ```
 
 To run a complete package check:
 
-```r
+``` r
 devtools::check()
 ```
 
 To rebuild the pkgdown website:
 
-```r
+``` r
 pkgdown::build_site()
 ```
 
----
+------------------------------------------------------------------------
 
 ## Contributing
 
 Contributions are welcome.
 
-To report a bug, request a feature, or suggest an improvement, open an issue on
-GitHub:
+To report a bug, request a feature, or suggest an improvement, open an
+issue on GitHub:
 
 <https://github.com/gomes-sh/nolaOpenData/issues>
 
-Pull requests are also welcome. Before submitting a pull request, please ensure
-that:
+Pull requests are also welcome. Before submitting a pull request, please
+ensure that:
 
 - package documentation has been regenerated
 - automated tests pass
 - `devtools::check()` completes successfully
 - new behavior is documented and tested
 
----
+------------------------------------------------------------------------
 
 ## Author
 
 **Shelby Lyn Gomes**
 
-Email: [gomessh@mailbox.org](mailto:gomessh@mailbox.org)  
-GitHub: [@gomes-sh](https://github.com/gomes-sh)  
+Email: <gomessh@mailbox.org>  
+GitHub: [@gomes-sh](https://github.com/gomes-sh)
 
----
+------------------------------------------------------------------------
 
 ## Maintenance
 
-Because the package retrieves metadata dynamically from the live New Orleans Open
-Data catalog, newly published datasets may become available without requiring a
-package update.
+Because the package retrieves metadata dynamically from the live New
+Orleans Open Data catalog, newly published datasets may become available
+without requiring a package update.
 
-Package updates may still be required when the portal changes its catalog
-structure, dataset metadata fields, or API behavior.
+Package updates may still be required when the portal changes its
+catalog structure, dataset metadata fields, or API behavior.
 
----
+------------------------------------------------------------------------
 
 ## Disclaimer
 
-`nolaOpenData` is an independent project and is not affiliated with, endorsed
-by, or maintained by New Orleans or the organization responsible for the New Orleans
-Open Data Portal.
+`nolaOpenData` is an independent project and is not affiliated with,
+endorsed by, or maintained by New Orleans or the organization
+responsible for the New Orleans Open Data Portal.
