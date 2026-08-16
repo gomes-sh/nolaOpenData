@@ -104,7 +104,7 @@
 #'   # Advanced filtering with raw SoQL
 #'   nola_pull_dataset(
 #'     "wx2k-rsac",
-#'     where = "department = 'Safety & Permits' AND job_title = 'BUILDING INSPECTOR SUPERVISOR (CLASS CODE 2214)'",
+#'     where = "department = 'Safety & Permits' AND list_type = 'Regular'",
 #'     order = "start_date DESC",
 #'     limit = 100
 #'   )
