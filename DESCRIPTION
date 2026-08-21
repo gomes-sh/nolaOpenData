@@ -23,7 +23,7 @@ Description: Provides a unified set of helper functions to access datasets
     Functions return results as tidy tibbles and support optional filtering,
     sorting, and row limits via the Socrata API. The package provides a
     consistent interface for discovering and downloading datasets from the
-    San Francisco Open Data Portal using human-readable dataset keys or official
+    New Orleans Open Data Portal using human-readable dataset keys or official
     Socrata dataset identifiers.
 License: MIT + file LICENSE
 Encoding: UTF-8
